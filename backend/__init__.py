@@ -1,0 +1,1 @@
+"""HandyMouseCam backend package."""

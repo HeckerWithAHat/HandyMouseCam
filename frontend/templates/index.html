@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HandyMouseCam - Hand Gesture Mouse Control</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🖐️ HandyMouseCam</h1>
+            <p class="subtitle">Hand Gesture Mouse Control</p>
+        </div>
+
+        <div class="status-panel">
+            <div class="status-indicator" id="connectionStatus">
+                <span class="status-dot disconnected"></span>
+                <span class="status-text">Disconnected</span>
+            </div>
+            <div class="info-text" id="infoText">Initializing connection...</div>
+        </div>
+
+        <div class="video-container">
+            <video id="cameraVideo" autoplay playsinline muted>
+                <p>Your browser does not support the video element.</p>
+            </video>
+            <div class="video-overlay">
+                <div class="hand-debug" id="handDebug"></div>
+            </div>
+        </div>
+
+        <div class="controls-panel">
+            <div class="camera-selector">
+                <label for="cameraSelect">Camera:</label>
+                <select id="cameraSelect">
+                    <option value="user">Front Camera</option>
+                    <option value="environment">Rear Camera</option>
+                </select>
+            </div>
+            
+            <div class="gesture-info">
+                <h3>Gestures:</h3>
+                <ul>
+                    <li><strong>Open Hand:</strong> Move cursor</li>
+                    <li><strong>Thumb + Index:</strong> Left click / Drag</li>
+                    <li><strong>Thumb + Middle:</strong> Right click</li>
+                    <li><strong>Fist:</strong> Pause tracking (clutch)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="debug-panel">
+            <h3>Debug Info</h3>
+            <div id="debugInfo" class="debug-text">
+                <p>Waiting for connection...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
