@@ -15,9 +15,10 @@ TURN_SERVERS = []
 MAX_NUM_HANDS = 2
 HAND_DETECTION_CONFIDENCE = 0.7
 HAND_TRACKING_CONFIDENCE = 0.5
+HAND_LANDMARKER_MODEL_PATH = "models/hand_landmarker.task"
 
 # Gesture Recognition Configuration
-PINCH_DISTANCE_THRESHOLD_MM = 30  # Distance between thumb and finger to trigger pinch
+PINCH_DISTANCE_THRESHOLD_MM = 10  # Distance between thumb and finger to trigger pinch
 PINCH_STABILITY_FRAMES = 3  # Number of frames to confirm a pinch
 MIN_HAND_VISIBILITY = 0.5  # Minimum confidence to consider hand visible
 

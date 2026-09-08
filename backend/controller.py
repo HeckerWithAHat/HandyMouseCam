@@ -53,7 +53,7 @@ class OSController:
         self.last_hand_position = None
         logger.info("OSController initialized")
     
-    def handle_gesture(self, event: GestureEvent):
+    def  handle_gesture(self, event: GestureEvent):
         """
         Process a gesture event and perform corresponding OS action.
         

@@ -4,6 +4,7 @@ Handles SDP offer/answer exchange and ICE candidate processing.
 """
 
 import logging
+import asyncio
 from aiortc import RTCPeerConnection, RTCSessionDescription
 from aiortc.sdp import candidate_from_sdp
 import json
@@ -73,6 +74,7 @@ class WebRTCSignaling:
             sdp=offer["sdp"], type=offer["type"]
         )
         await self.peer_connection.setRemoteDescription(self.remote_description)
+        await asyncio.sleep(0)
         answer = await self.peer_connection.createAnswer()
         await self.peer_connection.setLocalDescription(answer)
         local_description = self.peer_connection.localDescription

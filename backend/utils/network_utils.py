@@ -18,29 +18,22 @@ def get_local_ip() -> str:
     Returns:
         str: Local IP address (e.g., "192.168.1.100")
     """
-    # TODO: Implement local IP detection
-    # Should:
-    # - Connect to a local gateway to determine interface
-    # - Return non-loopback IPv4 address
-    # - Handle cases with multiple network interfaces
     try:
         logger.debug("Detecting local IP address...")
-        pass
-    except Exception as e:
-        logger.error(f"Error detecting local IP: {e}")
-        return "127.0.0.1"
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            address = sock.getsockname()[0]
+            if address and not address.startswith("127."):
+                return address
 
+        hostname_address = socket.gethostbyname(socket.gethostname())
+        if hostname_address and not hostname_address.startswith("127."):
+            return hostname_address
+    except OSError as error:
+        logger.warning("Could not detect a LAN IP address: %s", error)
 
-def get_wifi_networks() -> list:
-    """
-    Scan available WiFi networks (Windows).
-    
-    Returns:
-        list: List of available network names
-    """
-    # TODO: Implement WiFi scanning
-    logger.debug("Scanning WiFi networks...")
-    return []
+    return "127.0.0.1"
+
 
 
 def test_network_connectivity(host: str, port: int, timeout: float = 2.0) -> bool:
@@ -57,4 +50,11 @@ def test_network_connectivity(host: str, port: int, timeout: float = 2.0) -> boo
     """
     # TODO: Implement connectivity test
     logger.debug(f"Testing connectivity to {host}:{port}")
+
+    try:
+        with socket.create_connection((host, port), timeout=timeout) as sock:
+            return True
+    except (socket.timeout, socket.error) as e:
+        logger.warning(f"Failed to connect to {host}:{port}: {e}")
+
     return False

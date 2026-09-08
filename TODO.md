@@ -7,41 +7,41 @@ Complete list of all functions and features that need to be implemented in Handy
 ## Phase 0-1: Project Setup & Video Pipeline
 
 ### `backend/signaling.py` - WebRTC Signaling
-- [ ] **`WebRTCSignaling.create_peer_connection()`** (async)
+- [x] **`WebRTCSignaling.create_peer_connection()`** (async)
   - Create RTCPeerConnection instance
   - Register on_track handlers
   - Configure ICE servers (empty for LAN)
   - Return configured peer connection
 
-- [ ] **`WebRTCSignaling.handle_sdp_offer(offer_json: str)`** (async)
+- [x] **`WebRTCSignaling.handle_sdp_offer(offer_json: str)`** (async)
   - Parse JSON SDP offer
   - Set remote description on peer connection
   - Create local answer
   - Set local description
   - Return JSON-serialized SDP answer
 
-- [ ] **`WebRTCSignaling.handle_ice_candidate(candidate_json: str)`** (async)
+- [x] **`WebRTCSignaling.handle_ice_candidate(candidate_json: str)`** (async)
   - Parse JSON ICE candidate
   - Add to peer connection
   - Handle any errors gracefully
 
-- [ ] **`WebRTCSignaling.add_on_track_handler(callback)`**
+- [x] **`WebRTCSignaling.add_on_track_handler(callback)`**
   - Register callback function to be called when remote track arrives
   - Store reference for later invocation
 
 ### `backend/app.py` - Flask Routes & WebSocket Handlers
-- [ ] **`on_sdp_offer(data)`** Socket.IO event handler
+- [x] **`on_sdp_offer(data)`** Socket.IO event handler
   - Extract SDP offer from data
   - Call WebRTCSignaling.handle_sdp_offer()
   - Emit SDP answer back to phone via 'sdp_answer' event
   - Log any errors
 
-- [ ] **`on_ice_candidate(data)`** Socket.IO event handler
+- [x] **`on_ice_candidate(data)`** Socket.IO event handler
   - Extract ICE candidate from data
   - Call WebRTCSignaling.handle_ice_candidate()
   - Handle errors gracefully
 
-- [ ] **Initialize WebRTC components on server startup**
+- [x] **Initialize WebRTC components on server startup**
   - Create WebRTCSignaling instance
   - Create VideoProcessor instance
   - Create GestureRecognizer instance
@@ -49,12 +49,12 @@ Complete list of all functions and features that need to be implemented in Handy
   - Wire gesture callbacks
 
 ### `frontend/static/script.js` - Phone Client
-- [ ] **`HandyMouseCamClient.connectToServer()`**
+- [x] **`HandyMouseCamClient.connectToServer()`**
   - Establish SocketIO connection to server
   - Set up event listeners for connection/disconnect
   - Handle connection errors
 
-- [ ] **`HandyMouseCamClient.setupWebRTC()`**
+- [x] **`HandyMouseCamClient.setupWebRTC()`**
   - Create RTCPeerConnection
   - Add local media stream tracks
   - Set up ICE candidate handler
@@ -62,18 +62,18 @@ Complete list of all functions and features that need to be implemented in Handy
   - Emit offer to server
   - Handle remote tracks
 
-- [ ] **`HandyMouseCamClient.getMediaStream()`**
+- [x] **`HandyMouseCamClient.getMediaStream()`**
   - Request camera access via getUserMedia()
   - Handle different facing modes (front/rear)
   - Attach to video element
   - Handle permission denied errors
 
-- [ ] **`HandyMouseCamClient.switchCamera()`**
+- [x] **`HandyMouseCamClient.switchCamera()`**
   - Stop current media stream
   - Request new stream with different facing mode
   - Update video element
 
-- [ ] **`HandyMouseCamClient.setStatus(text, connected)`**
+- [x] **`HandyMouseCamClient.setStatus(text, connected)`**
   - Update UI status indicator (dot color)
   - Update status text
   - Set connected flag
@@ -83,11 +83,11 @@ Complete list of all functions and features that need to be implemented in Handy
 ## Phase 1: Video Frame Processing
 
 ### `backend/video_processor.py` - Hand Tracking
-- [ ] **`Hand.get_palm_center()`**
+- [x] **`Hand.get_palm_center()`**
   - Average wrist and MCP landmarks to find palm center
   - Return (x, y, z) tuple
 
-- [ ] **`VideoProcessor.process_frame(frame: np.ndarray)`**
+- [x] **`VideoProcessor.process_frame(frame: np.ndarray)`**
   - Convert frame to RGB if needed
   - Run MediaPipe Hands inference
   - Extract landmarks for each detected hand
@@ -95,39 +95,35 @@ Complete list of all functions and features that need to be implemented in Handy
   - Return list of Hand objects
   - Log frame processing stats
 
-- [ ] **`VideoProcessor.draw_landmarks(frame, hands)`**
+- [x] **`VideoProcessor.draw_landmarks(frame, hands)`**
   - Draw circles at landmark positions
   - Draw lines connecting hand skeleton
   - Add text labels (Left/Right, confidence)
   - Return annotated frame (for debug display)
 
-- [ ] **`VideoProcessor.get_frame_dimensions(frame)`**
+- [x] **`VideoProcessor.get_frame_dimensions(frame)`**
   - Extract height and width
   - Return as (width, height) tuple
 
 ### `backend/utils/network_utils.py` - Network Utilities
-- [ ] **`get_local_ip()`**
+- [x] **`get_local_ip()`**
   - Detect local IPv4 address of machine
   - Return IP suitable for LAN access
   - Handle multiple network interfaces gracefully
   - Fallback to 127.0.0.1 if detection fails
 
-- [ ] **`get_wifi_networks()`**
-  - Scan available WiFi networks (Windows)
-  - Return list of network names
-
-- [ ] **`test_network_connectivity(host, port, timeout)`**
+- [x] **`test_network_connectivity(host, port, timeout)`**
   - Test if host:port is reachable
   - Return boolean True/False
 
 ### `backend/utils/qr_generator.py` - QR Code
-- [ ] **`generate_qr_code(url, output_path, size)`**
+- [x] **`generate_qr_code(url, output_path, size)`**
   - Use qrcode library to generate QR from URL
   - Save PNG to output_path
   - Print ASCII art version to console
   - Handle file I/O errors
 
-- [ ] **`display_qr_ascii(url)`**
+- [x] **`display_qr_ascii(url)`**
   - Generate ASCII art QR code
   - Print to terminal
 
@@ -136,23 +132,23 @@ Complete list of all functions and features that need to be implemented in Handy
 ## Phase 2: Hand Landmark & State Setup
 
 ### `backend/video_processor.py` - Frame-to-Landmark Pipeline
-- [ ] **Wire VideoProcessor into main loop**
+- [x] **Wire VideoProcessor into main loop**
   - On each WebRTC frame arrival
   - Call process_frame(frame)
   - Pass Hand objects to GestureRecognizer
 
 ### `backend/gesture_recognizer.py` - Gesture Detection Prep
-- [ ] **`GestureRecognizer._calculate_pinch_distance(thumb, finger)`**
+- [x] **`GestureRecognizer._calculate_pinch_distance(thumb, finger)`**
   - Calculate Euclidean distance between 3D points
   - Normalize for hand size (~170mm reference)
   - Return distance in mm
 
-- [ ] **`GestureRecognizer._is_pinched(hand, finger_idx)`**
+- [x] **`GestureRecognizer._is_pinched(hand, finger_idx)`**
   - Calculate distance from thumb to specified finger
   - Compare against PINCH_DISTANCE_THRESHOLD_MM
   - Return boolean (True = pinched)
 
-- [ ] **`GestureRecognizer._is_hand_closed(hand)`**
+- [x] **`GestureRecognizer._is_hand_closed(hand)`**
   - Check if all fingertips are close to palm
   - Use multiple landmark distance checks
   - Return boolean (True = closed/fist)
@@ -162,7 +158,7 @@ Complete list of all functions and features that need to be implemented in Handy
 ## Phase 3: Gesture Recognition State Machine
 
 ### `backend/gesture_recognizer.py` - Core Recognition Logic
-- [ ] **`GestureRecognizer.process_hands(hands, timestamp)`**
+- [x] **`GestureRecognizer.process_hands(hands, timestamp)`**
   - Main gesture processing loop
   - Map hands by handedness (left/right)
   - Detect pinch start/move/end transitions
@@ -173,14 +169,14 @@ Complete list of all functions and features that need to be implemented in Handy
   - Call callbacks for each event
   - Return list of events
 
-- [ ] **`GestureRecognizer._emit_gesture(event)`**
+- [x] **`GestureRecognizer._emit_gesture(event)`**
   - Iterate through registered callbacks
   - Call each callback with event
   - Handle callback exceptions gracefully
   - Log any errors
 
 ### Integration Points
-- [ ] **Wire GestureRecognizer into main loop**
+- [x] **Wire GestureRecognizer into main loop**
   - After VideoProcessor extracts hands
   - Pass hands list to process_hands()
   - Receive GestureEvent stream

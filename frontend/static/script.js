@@ -2,13 +2,13 @@
  * HandyMouseCam Frontend JavaScript
  * Handles WebRTC connection, camera streaming, and server communication
  */
-
 class HandyMouseCamClient {
     constructor() {
         this.socket = null;
         this.peerConnection = null;
         this.mediaStream = null;
         this.videoElement = document.getElementById('cameraVideo');
+        this.debugVideoElement = document.getElementById('debugVideo');
         this.statusDot = document.querySelector('.status-dot');
         this.statusText = document.querySelector('.status-text');
         this.infoText = document.getElementById('infoText');
@@ -17,6 +17,8 @@ class HandyMouseCamClient {
         
         this.isConnected = false;
         this.frameCount = 0;
+        this.pendingIceCandidates = [];
+        this.isSettingUpWebRTC = false;
         
         this.init();
     }
@@ -40,13 +42,13 @@ class HandyMouseCamClient {
     connectToServer() {
         this.log('Connecting to server...');
         
-        // TODO: Implement WebSocket connection
-        // Should:
-        // - Connect to /socket.io endpoint
-        // - Set up event handlers for SDP offer, ICE candidates
-        // - Handle connection events
-        
-        this.socket = io();
+        if (typeof io !== 'function') {
+            this.log('Socket.IO client library is unavailable');
+            this.setStatus('Error', false);
+            return;
+        }
+
+        this.socket = io({ transports: ['websocket', 'polling'] });
         
         this.socket.on('connect', () => {
             this.log('Connected to server');
@@ -57,16 +59,22 @@ class HandyMouseCamClient {
         this.socket.on('disconnect', () => {
             this.log('Disconnected from server');
             this.setStatus('Disconnected', false);
+            this.closePeerConnection();
+        });
+
+        this.socket.on('connect_error', (error) => {
+            this.log(`Connection error: ${error.message}`);
+            this.setStatus('Connection error', false);
         });
         
         this.socket.on('sdp_answer', (data) => {
             this.log('Received SDP answer');
-            // TODO: Handle SDP answer
+            this.handleSdpAnswer(data);
         });
         
         this.socket.on('ice_candidate', (data) => {
             this.log('Received ICE candidate');
-            // TODO: Handle ICE candidate
+            this.handleIceCandidate(data);
         });
     }
     
@@ -76,22 +84,20 @@ class HandyMouseCamClient {
     async setupWebRTC() {
         this.log('Setting up WebRTC...');
         
+        if (this.isSettingUpWebRTC || !this.socket?.connected) {
+            return;
+        }
+
+        this.isSettingUpWebRTC = true;
         try {
-            // TODO: Implement WebRTC setup
-            // Should:
-            // - Create RTCPeerConnection
-            // - Get camera stream
-            // - Add track to peer connection
-            // - Create and send SDP offer
-            // - Handle remote tracks
-            
-            // Get camera stream
             await this.getMediaStream();
+            this.closePeerConnection();
             
-            // Create peer connection
             this.peerConnection = new RTCPeerConnection({
                 iceServers: []
             });
+
+            this.peerConnection.addTransceiver('video', { direction: 'recvonly' });
             
             // Add local stream tracks
             if (this.mediaStream) {
@@ -107,22 +113,38 @@ class HandyMouseCamClient {
                     this.socket.emit('ice_candidate', event.candidate);
                 }
             };
+
+            this.peerConnection.onconnectionstatechange = () => {
+                const state = this.peerConnection.connectionState;
+                this.log(`WebRTC connection state: ${state}`);
+                if (state === 'connected') {
+                    this.setStatus('Connected', true);
+                } else if (['failed', 'closed', 'disconnected'].includes(state)) {
+                    this.setStatus('Disconnected', false);
+                }
+            };
             
-            // Handle remote stream
             this.peerConnection.ontrack = (event) => {
-                this.log('Received remote track');
+                this.log('Received annotated landmark video');
+                if (event.track.kind === 'video' && event.streams[0]) {
+                    this.debugVideoElement.srcObject = event.streams[0];
+                }
             };
             
             // Create and send offer
             const offer = await this.peerConnection.createOffer();
             await this.peerConnection.setLocalDescription(offer);
             
-            this.socket.emit('sdp_offer', this.peerConnection.localDescription);
+            this.socket.emit('sdp_offer', {
+                type: this.peerConnection.localDescription.type,
+                sdp: this.peerConnection.localDescription.sdp
+            });
             this.log('SDP offer sent');
-            
         } catch (error) {
             this.log(`WebRTC setup error: ${error.message}`);
             this.setStatus('Error', false);
+        } finally {
+            this.isSettingUpWebRTC = false;
         }
     }
     
@@ -133,7 +155,11 @@ class HandyMouseCamClient {
         this.log('Requesting camera access...');
         
         try {
-            // TODO: Implement media stream acquisition
+            this.log(navigator.mediaDevices);
+            if (!navigator.mediaDevices?.getUserMedia) {
+                throw new Error('Camera access is not supported by this browser');
+            }
+
             const facingMode = this.cameraSelect.value === 'user' ? 'user' : 'environment';
             
             this.mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -148,10 +174,10 @@ class HandyMouseCamClient {
             this.videoElement.srcObject = this.mediaStream;
             this.log('Camera access granted');
             this.infoText.textContent = 'Camera active - position hands in frame';
-            
         } catch (error) {
             this.log(`Camera access error: ${error.message}`);
             this.infoText.textContent = 'Camera access denied. Please allow camera permission.';
+            throw error;
         }
     }
     
@@ -162,21 +188,74 @@ class HandyMouseCamClient {
         this.log('Switching camera...');
         
         try {
-            // TODO: Implement camera switching
-            // Should:
-            // - Stop current stream
-            // - Get new stream with different facing mode
-            // - Update video element
-            
             if (this.mediaStream) {
                 this.mediaStream.getTracks().forEach(track => track.stop());
             }
             
             await this.getMediaStream();
+
+            if (this.peerConnection && this.mediaStream) {
+                const videoTrack = this.mediaStream.getVideoTracks()[0];
+                const sender = this.peerConnection.getSenders().find(
+                    currentSender => currentSender.track?.kind === 'video'
+                );
+                if (videoTrack && sender) {
+                    await sender.replaceTrack(videoTrack);
+                }
+            }
             
         } catch (error) {
             this.log(`Camera switch error: ${error.message}`);
         }
+    }
+
+    /**
+     * Apply the server's SDP answer and any candidates received early.
+     */
+    async handleSdpAnswer(data) {
+        try {
+            if (!this.peerConnection) {
+                throw new Error('Peer connection is not ready');
+            }
+
+            const answer = typeof data === 'string' ? JSON.parse(data) : data;
+            await this.peerConnection.setRemoteDescription(answer);
+
+            for (const candidate of this.pendingIceCandidates) {
+                await this.peerConnection.addIceCandidate(candidate);
+            }
+            this.pendingIceCandidates = [];
+        } catch (error) {
+            this.log(`SDP answer error: ${error.message}`);
+            this.setStatus('Error', false);
+        }
+    }
+
+    /**
+     * Add a remote ICE candidate after the peer connection is ready.
+     */
+    async handleIceCandidate(data) {
+        try {
+            const candidate = typeof data === 'string' ? JSON.parse(data) : data;
+            if (!candidate || !this.peerConnection) {
+                return;
+            }
+            if (!this.peerConnection.remoteDescription) {
+                this.pendingIceCandidates.push(candidate);
+                return;
+            }
+            await this.peerConnection.addIceCandidate(candidate);
+        } catch (error) {
+            this.log(`ICE candidate error: ${error.message}`);
+        }
+    }
+
+    closePeerConnection() {
+        if (this.peerConnection) {
+            this.peerConnection.close();
+            this.peerConnection = null;
+        }
+        this.pendingIceCandidates = [];
     }
     
     /**
