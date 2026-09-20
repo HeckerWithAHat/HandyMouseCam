@@ -14,6 +14,7 @@ from config import (
     MIN_HAND_VISIBILITY,
     PINCH_DISTANCE_THRESHOLD_MM,
     PINCH_STABILITY_FRAMES,
+    FIST_DISTANCE_THRESHOLD_MM,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,9 @@ class GestureRecognizer:
                 end_event = self._finish_active_gesture(side, timestamp)
                 if end_event:
                     events.append(end_event)
+                self._pinch_candidates[side] = None
+                self.pinch_frame_count[side] = 0
+                self.pinch_state[side] = None
                 if self._active_gestures[side] != GestureType.CLUTCH:
                     events.append(self._make_event(
                         GestureType.CLUTCH, side, timestamp, (0.0, 0.0), 'start'
@@ -95,6 +99,9 @@ class GestureRecognizer:
                 end_event = self._finish_active_gesture(side, timestamp, position)
                 if end_event:
                     events.append(end_event)
+                self._pinch_candidates[side] = None
+                self.pinch_frame_count[side] = 0
+                self.pinch_state[side] = None
                 phase = 'move' if self._active_gestures[side] == GestureType.CLUTCH else 'start'
                 events.append(self._make_event(
                     GestureType.CLUTCH, side, timestamp, position, phase
@@ -185,16 +192,18 @@ class GestureRecognizer:
         return distance <= PINCH_DISTANCE_THRESHOLD_MM
 
     def _is_hand_closed(self, hand: Hand) -> bool:
-        palm_center = np.asarray(hand.get_palm_center(), dtype=float)
-        palm_size = float(np.linalg.norm(
-            np.asarray(hand.get_wrist()) - np.asarray(hand.landmarks[9])
-        ))
-        if palm_size == 0:
-            return False
+
+        print("4", np.asarray(tuple(hand.landmarks[4])))
+        print("8", np.asarray(tuple(hand.landmarks[8])))
+        print("12", np.asarray(tuple(hand.landmarks[12])))
+        print("16", np.asarray(tuple(hand.landmarks[16])))
+        print("20", np.asarray(tuple(hand.landmarks[20])))
+        print("palm", np.asarray(hand.get_palm_center()))
+        print("result", [np.linalg.norm(np.asarray(tuple(hand.landmarks[index])) - np.asarray(hand.get_palm_center())) * 170.0 <= FIST_DISTANCE_THRESHOLD_MM for index in (4, 8, 12, 16, 20)])
+
         return all(
-            np.linalg.norm(np.asarray(hand.landmarks[index]) - palm_center)
-            <= palm_size * 0.5
-            for index in (8, 12, 16, 20)
+            
+            [np.linalg.norm(np.asarray(tuple(hand.landmarks[index])) - np.asarray(hand.get_palm_center())) * 170.0 <= FIST_DISTANCE_THRESHOLD_MM for index in (4, 8, 12, 16, 20)]
         )
 
     def _emit_gesture(self, event: GestureEvent):

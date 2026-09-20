@@ -65,6 +65,23 @@ def test_closed_hand_emits_clutch_and_recovery_end():
                and event.phase == "end" for event in recovery)
 
 
+def test_clutch_takes_priority_over_pinch_and_resets_pinch_stability():
+    recognizer = GestureRecognizer()
+    hand = make_hand()
+    recognizer._is_hand_closed = lambda current_hand: True
+    recognizer._detect_pinch = lambda current_hand: (PinchType.INDEX, 1.0)
+
+    events = recognizer.process_hands([hand], 1.0)
+
+    assert [event.gesture_type for event in events if event.hand == "Right"] == [GestureType.CLUTCH]
+    assert recognizer.pinch_frame_count["right"] == 0
+    assert recognizer._pinch_candidates["right"] is None
+
+    recognizer._is_hand_closed = lambda current_hand: False
+    first_open_frame = recognizer.process_hands([hand], 2.0)
+    assert not any(event.gesture_type == GestureType.PINCH_INDEX for event in first_open_frame)
+
+
 def test_low_confidence_and_unknown_hands_are_ignored():
     recognizer = GestureRecognizer()
     low_confidence = make_hand(confidence=0.1)

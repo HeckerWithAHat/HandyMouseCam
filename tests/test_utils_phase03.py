@@ -1,7 +1,7 @@
 import socket
 
 from utils.network_utils import get_local_ip, test_network_connectivity as network_connectivity
-from utils.qr_generator import display_qr_ascii, generate_qr_code
+from utils.qr_generator import build_and_display_qr_ascii, generate_qr_code
 
 
 def test_get_local_ip_uses_udp_socket(monkeypatch):

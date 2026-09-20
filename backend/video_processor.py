@@ -168,7 +168,7 @@ class VideoProcessor:
         """Draw the current gesture and raw pinch measurements for debugging."""
         image = Image.fromarray(frame)
         draw = ImageDraw.Draw(image)
-        font = ImageFont.load_default()
+        font = ImageFont.load_default(size=24)
         frame_height, frame_width = frame.shape[:2]
         latest_gestures = {}
         for event in gesture_events or []:
@@ -187,6 +187,21 @@ class VideoProcessor:
                 fill=(0, 0, 0),
             )
             draw.text((text_x, text_y), label, fill=(255, 255, 255), font=font)
+
+            palm_center = self._pixel_point(
+                hand.get_palm_center(), frame_width, frame_height
+            )
+            palm_radius = 5
+            draw.ellipse(
+                (
+                    palm_center[0] - palm_radius,
+                    palm_center[1] - palm_radius,
+                    palm_center[0] + palm_radius,
+                    palm_center[1] + palm_radius,
+                ),
+                fill=(40, 180, 255),
+                outline=(0, 0, 0),
+            )
 
             thumb = self._pixel_point(hand.get_thumb_tip(), frame_width, frame_height)
             for finger_name, finger in (

@@ -58,7 +58,7 @@ def build_and_display_qr_ascii(url: str):
     """
     qr_code = _build_qr_code(url, size=10)
     logger.info("Displaying QR code for %s", url)
-    print(f"URL: {url}")
-    for row in qr_code.get_matrix():
-        print("".join("⬜" if module else "⬛" for module in row))
+    # print(f"URL: {url}")
+    # for row in qr_code.get_matrix():
+    #     print("".join("⬜" if module else "⬛" for module in row))
     return qr_code

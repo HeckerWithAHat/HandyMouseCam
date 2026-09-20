@@ -22,6 +22,9 @@ from utils.network_utils import get_local_ip
 logging.basicConfig(level=getattr(logging, LOG_LEVEL))
 logger = logging.getLogger(__name__)
 
+import tkinter as tk
+from PIL import Image, ImageTk
+
 # Initialize Flask app
 app = Flask(__name__, static_folder='../frontend/static', template_folder='../frontend/templates')
 app.config['SECRET_KEY'] = 'handy-mouse-cam-secret'
@@ -29,6 +32,9 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 webrtc_loop = asyncio.new_event_loop()
 
+#Init Tkinter root for QR code display
+root = tk.Tk()
+root.title("HandyMouseCam")
 
 def _run_webrtc_loop():
     asyncio.set_event_loop(webrtc_loop)
@@ -43,6 +49,26 @@ video_processor = VideoProcessor()
 gesture_recognizer = GestureRecognizer()
 os_controller = OSController()
 gesture_recognizer.register_gesture_callback(os_controller.handle_gesture)
+
+def run_qr_display():
+    try:
+        # Convert the image to a format Tkinter can understand
+        if not Image.open(QR_CODE_OUTPUT_PATH):
+            raise FileNotFoundError("Image not found")
+        tk_image = ImageTk.BitmapImage(Image.open(QR_CODE_OUTPUT_PATH))
+
+        # Create a Label widget to hold and display the image
+        image_label = tk.Label(root, image=tk_image)
+        image_label.pack(side = "bottom", fill = "both", expand = "yes")  # Adds a bit of padding around the image
+        root.update()
+
+
+    except FileNotFoundError:
+        print(f"Error: The file '{QR_CODE_OUTPUT_PATH}' was not found. Please check the path.")
+        root.destroy()  # Close the Tkinter window if the image is not found
+        local_ip = get_local_ip()
+        qr_url = f"https://{local_ip}:{FLASK_PORT}"
+        print(f"URL: {qr_url}")
 
 
 def _on_video_track(track):
@@ -129,7 +155,8 @@ def run_server():
     qr_url = f"https://{local_ip}:{FLASK_PORT}"
     logger.info(f"QR URL: {qr_url}")
     generate_qr_code(qr_url, QR_CODE_OUTPUT_PATH)
-    socketio.run(app, host=FLASK_HOST, port=FLASK_PORT, debug=DEBUG_MODE, ssl_context='adhoc')
+    run_qr_display()
+    socketio.run(app, host=FLASK_HOST, port=FLASK_PORT, debug=DEBUG_MODE, ssl_context='adhoc', use_reloader=False)
 
 
 if __name__ == '__main__':
