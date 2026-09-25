@@ -12,7 +12,12 @@ import win32con
 import win32api
 
 from gesture_recognizer import GestureEvent, GestureType, PinchType
-from config import CURSOR_SENSITIVITY, TITLE_BAR_HEIGHT_PIXELS
+from config import (
+    CURSOR_SENSITIVITY,
+    CURSOR_SMOOTHING_FACTOR,
+    CURSOR_MOVEMENT_DEADZONE_PIXELS,
+    TITLE_BAR_HEIGHT_PIXELS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +56,8 @@ class OSController:
         self.dragging_window = False
         self.dragging_window_hwnd = None
         self.last_hand_position = None
+        self._smoothed_delta = (0.0, 0.0)
+        self._cursor_remainder = (0.0, 0.0)
         logger.info("OSController initialized")
     
     def  handle_gesture(self, event: GestureEvent):
@@ -79,14 +86,60 @@ class OSController:
         Args:
             event: Hand movement gesture event
         """
-        # TODO: Implement relative cursor movement
-        # Should:
-        # - Calculate delta from previous position
-        # - Apply sensitivity scaling
-        # - Apply smoothing
-        # - Update OS cursor position
-        if event.hand == 'Right':
-            logger.debug(f"Moving cursor to hand position {event.hand_position}")
+        if event.hand != 'Right':
+            return
+
+        if event.phase == 'end':
+            self.last_hand_position = None
+            self._smoothed_delta = (0.0, 0.0)
+            self._cursor_remainder = (0.0, 0.0)
+            return
+
+        position = event.hand_position
+        if position is None or len(position) < 2:
+            logger.warning("Ignoring movement event without a valid hand position")
+            return
+
+        if self.last_hand_position is None or event.phase == 'start':
+            self.last_hand_position = (float(position[0]), float(position[1]))
+            self._smoothed_delta = (0.0, 0.0)
+            self._cursor_remainder = (0.0, 0.0)
+            return
+
+        screen_width = win32api.GetSystemMetrics(0)
+        screen_height = win32api.GetSystemMetrics(1)
+        delta = (
+            (self.last_hand_position[0] - float(position[0]))
+            * screen_width
+            * CURSOR_SENSITIVITY,
+            (float(position[1]) - self.last_hand_position[1])
+            * screen_height
+            * CURSOR_SENSITIVITY,
+        )
+        smoothing = min(max(CURSOR_SMOOTHING_FACTOR, 0.0), 1.0)
+        self._smoothed_delta = tuple(
+            smoothing * current + (1.0 - smoothing) * previous
+            for current, previous in zip(delta, self._smoothed_delta)
+        )
+        self.last_hand_position = (float(position[0]), float(position[1]))
+
+        delta = tuple(
+            value if abs(value) >= CURSOR_MOVEMENT_DEADZONE_PIXELS else 0.0
+            for value in self._smoothed_delta
+        )
+
+        self._cursor_remainder = tuple(
+            remainder + value
+            for remainder, value in zip(self._cursor_remainder, delta)
+        )
+        dx, dy = (int(round(value)) for value in self._cursor_remainder)
+        self._cursor_remainder = tuple(
+            value - emitted
+            for value, emitted in zip(self._cursor_remainder, (dx, dy))
+        )
+        if dx or dy:
+            logger.debug("Moving cursor by (%d, %d) from hand position %s", dx, dy, position)
+            self.move_cursor_relative(dx, dy)
     
     def _handle_index_pinch(self, event: GestureEvent):
         """
@@ -101,6 +154,14 @@ class OSController:
         # - Pinch move: drag operation
         # - Pinch end: release
         logger.debug(f"Index pinch event from {event.hand}")
+        if event.phase == 'start':
+            pydirectinput.mouseDown()
+        elif event.phase == 'move':
+            self._handle_hand_movement(event)  # Continue moving cursor while pinched
+            pass
+        elif event.phase == 'end':
+            pydirectinput.mouseUp()
+
     
     def _handle_middle_pinch(self, event: GestureEvent):
         """
@@ -119,7 +180,10 @@ class OSController:
         Args:
             event: Clutch gesture event
         """
-        # TODO: Implement clutch handling
+        if event.hand == 'Right':
+            self.last_hand_position = None
+            self._smoothed_delta = (0.0, 0.0)
+            self._cursor_remainder = (0.0, 0.0)
         logger.debug(f"Clutch gesture from {event.hand}")
     
     def move_cursor(self, x: int, y: int):
@@ -131,8 +195,12 @@ class OSController:
             y: Y coordinate
         """
         try:
-            pydirectinput.moveTo(x, y)
-            self.current_cursor_pos = (x, y)
+            screen_width = win32api.GetSystemMetrics(0)
+            screen_height = win32api.GetSystemMetrics(1)
+            bounded_x = max(0, min(int(x), screen_width - 1))
+            bounded_y = max(0, min(int(y), screen_height - 1))
+            pydirectinput.moveTo(bounded_x, bounded_y)
+            self.current_cursor_pos = (bounded_x, bounded_y)
         except Exception as e:
             logger.error(f"Error moving cursor: {e}")
     
@@ -146,8 +214,8 @@ class OSController:
         """
         try:
             current_x, current_y = self._get_cursor_pos()
-            new_x = current_x + dx
-            new_y = current_y + dy
+            new_x = int(current_x + dx)
+            new_y = int(current_y + dy)
             self.move_cursor(new_x, new_y)
         except Exception as e:
             logger.error(f"Error moving cursor relatively: {e}")
@@ -156,6 +224,7 @@ class OSController:
         """Perform left mouse click."""
         try:
             pydirectinput.click()
+            pydirectinput.mouseUp()
             logger.debug("Left click performed")
         except Exception as e:
             logger.error(f"Error performing left click: {e}")
@@ -265,4 +334,5 @@ class OSController:
         Returns:
             Tuple[int, int]: (x, y) coordinates
         """
-        return pydirectinput.position()
+        position = pydirectinput.position()
+        return int(position[0]), int(position[1])

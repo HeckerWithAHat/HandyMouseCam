@@ -10,11 +10,19 @@ from flask import Flask, render_template, jsonify
 from flask_socketio import SocketIO, emit
 import json
 
-from config import FLASK_PORT, FLASK_HOST, DEBUG_MODE, LOG_LEVEL, QR_CODE_OUTPUT_PATH
+from config import (
+    DEBUG_MODE,
+    FLASK_HOST,
+    FLASK_PORT,
+    LOG_LEVEL,
+    QR_CODE_OUTPUT_PATH,
+    USE_WEBRTC,
+)
 from signaling import WebRTCSignaling
 from video_processor import AnnotatedVideoTrack, VideoProcessor
 from gesture_recognizer import GestureRecognizer
 from controller import OSController
+from local_camera import LocalCameraWorker
 from utils.qr_generator import generate_qr_code
 from utils.network_utils import get_local_ip
 
@@ -30,27 +38,30 @@ app = Flask(__name__, static_folder='../frontend/static', template_folder='../fr
 app.config['SECRET_KEY'] = 'handy-mouse-cam-secret'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-webrtc_loop = asyncio.new_event_loop()
+webrtc_loop = asyncio.new_event_loop() if USE_WEBRTC else None
+root = None
 
-#Init Tkinter root for QR code display
-root = tk.Tk()
-root.title("HandyMouseCam")
+if USE_WEBRTC:
+    root = tk.Tk()
+    root.title("HandyMouseCam")
 
-def _run_webrtc_loop():
-    asyncio.set_event_loop(webrtc_loop)
-    webrtc_loop.run_forever()
+    def _run_webrtc_loop():
+        asyncio.set_event_loop(webrtc_loop)
+        webrtc_loop.run_forever()
 
-
-threading.Thread(target=_run_webrtc_loop, name="webrtc-loop", daemon=True).start()
+    threading.Thread(target=_run_webrtc_loop, name="webrtc-loop", daemon=True).start()
 
 # Initialize components
-webrtc_signaling = WebRTCSignaling()
+webrtc_signaling = WebRTCSignaling() if USE_WEBRTC else None
 video_processor = VideoProcessor()
 gesture_recognizer = GestureRecognizer()
 os_controller = OSController()
 gesture_recognizer.register_gesture_callback(os_controller.handle_gesture)
+local_camera = LocalCameraWorker(video_processor, gesture_recognizer) if not USE_WEBRTC else None
 
 def run_qr_display():
+    if root is None:
+        return
     try:
         # Convert the image to a format Tkinter can understand
         if not Image.open(QR_CODE_OUTPUT_PATH):
@@ -73,7 +84,7 @@ def run_qr_display():
 
 def _on_video_track(track):
     """Attach an annotated return track for incoming phone video."""
-    if track.kind != "video" or webrtc_signaling.peer_connection is None:
+    if not USE_WEBRTC or track.kind != "video" or webrtc_signaling.peer_connection is None:
         return
     logger.info("Starting annotated video return track")
     annotated_track = AnnotatedVideoTrack(
@@ -82,7 +93,8 @@ def _on_video_track(track):
     webrtc_signaling.peer_connection.addTrack(annotated_track)
 
 
-webrtc_signaling.add_on_track_handler(_on_video_track)
+if USE_WEBRTC:
+    webrtc_signaling.add_on_track_handler(_on_video_track)
 
 
 @app.route('/')
@@ -96,7 +108,8 @@ def status():
     """Return server status."""
     return jsonify({
         'status': 'running',
-        'webrtc_ready': webrtc_signaling is not None,
+        'capture_mode': 'webrtc' if USE_WEBRTC else 'local_webcam',
+        'webrtc_ready': USE_WEBRTC and webrtc_signaling is not None,
         'local_ip': get_local_ip()
     })
 
@@ -115,6 +128,8 @@ def on_disconnect():
 
 
 def _run_on_webrtc_loop(coroutine):
+    if not USE_WEBRTC or webrtc_loop is None:
+        raise RuntimeError("WebRTC is disabled; set USE_WEBRTC=true to enable it")
     future = asyncio.run_coroutine_threadsafe(coroutine, webrtc_loop)
     return future.result()
 
@@ -150,14 +165,43 @@ def run_server():
     """Start the Flask-SocketIO server."""
     logger.info(f"Starting server on {FLASK_HOST}:{FLASK_PORT}")
     
-    # Generate and display QR code
-    local_ip = get_local_ip()
-    qr_url = f"https://{local_ip}:{FLASK_PORT}"
-    logger.info(f"QR URL: {qr_url}")
-    generate_qr_code(qr_url, QR_CODE_OUTPUT_PATH)
-    run_qr_display()
-    socketio.run(app, host=FLASK_HOST, port=FLASK_PORT, debug=DEBUG_MODE, ssl_context='adhoc', use_reloader=False)
+    if USE_WEBRTC:
+        local_ip = get_local_ip()
+        qr_url = f"https://{local_ip}:{FLASK_PORT}"
+        logger.info(f"QR URL: {qr_url}")
+        generate_qr_code(qr_url, QR_CODE_OUTPUT_PATH)
+        run_qr_display()
+    else:
+        logger.info("WebRTC disabled; using local webcam")
+        local_camera.start()
+
+    try:
+        socketio.run(
+            app,
+            host=FLASK_HOST,
+            port=FLASK_PORT,
+            debug=DEBUG_MODE,
+            ssl_context='adhoc' if USE_WEBRTC else None,
+            use_reloader=False,
+        )
+    finally:
+        if local_camera is not None:
+            local_camera.stop()
 
 
 if __name__ == '__main__':
     run_server()
+
+
+
+
+
+
+
+
+
+
+
+
+
+

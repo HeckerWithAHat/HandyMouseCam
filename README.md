@@ -186,9 +186,14 @@ pytest tests/test_controller.py -v
 - Check that phone browser supports `getUserMedia()`
 
 ### Cursor lags or jitters
+- Set `RETURN_ANNOTATED_VIDEO=false` to avoid rendering debug frames
+- Set `USE_WEBRTC=false` to use the laptop webcam and remove phone/WiFi latency
+- Increase `CURSOR_SMOOTHING_FACTOR` only if needed; lower values reduce delay
 - Reduce `MAX_NUM_HANDS` in config
-- Increase `CURSOR_SMOOTHING_FACTOR` (0.0-1.0)
-- Check WiFi signal strength
+
+### Use the laptop webcam
+Set `USE_WEBRTC=false` in `backend/config.py` or as an environment variable, then run `python run.py`.
+The local camera uses `LOCAL_CAMERA_INDEX`, `LOCAL_CAMERA_WIDTH`, `LOCAL_CAMERA_HEIGHT`, and `LOCAL_CAMERA_FPS`.
 
 ### Gestures not detected
 - Ensure hands are fully visible in camera frame

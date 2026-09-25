@@ -13,6 +13,7 @@ av>=14.0.0
 # Hand Tracking
 mediapipe>=1.0.1
 numpy>=2.0.0
+opencv-python>=4.10.0
 
 # OS Control
 pydirectinput>=1.0.4

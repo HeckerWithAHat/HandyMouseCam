@@ -193,16 +193,7 @@ class GestureRecognizer:
 
     def _is_hand_closed(self, hand: Hand) -> bool:
 
-        print("4", np.asarray(tuple(hand.landmarks[4])))
-        print("8", np.asarray(tuple(hand.landmarks[8])))
-        print("12", np.asarray(tuple(hand.landmarks[12])))
-        print("16", np.asarray(tuple(hand.landmarks[16])))
-        print("20", np.asarray(tuple(hand.landmarks[20])))
-        print("palm", np.asarray(hand.get_palm_center()))
-        print("result", [np.linalg.norm(np.asarray(tuple(hand.landmarks[index])) - np.asarray(hand.get_palm_center())) * 170.0 <= FIST_DISTANCE_THRESHOLD_MM for index in (4, 8, 12, 16, 20)])
-
         return all(
-            
             [np.linalg.norm(np.asarray(tuple(hand.landmarks[index])) - np.asarray(hand.get_palm_center())) * 170.0 <= FIST_DISTANCE_THRESHOLD_MM for index in (4, 8, 12, 16, 20)]
         )
 
@@ -211,8 +202,7 @@ class GestureRecognizer:
                    f"{event.phase} pos={event.hand_position}")
         if event.pinch_distance_mm is not None:
             message += f" distance={event.pinch_distance_mm:.1f}mm"
-        print(message)
-        logger.info(message)
+        logger.debug(message)
         for callback in self.gesture_callbacks:
             try:
                 callback(event)

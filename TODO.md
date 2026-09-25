@@ -186,36 +186,36 @@ Complete list of all functions and features that need to be implemented in Handy
 ## Phase 4: Click & Movement Gestures
 
 ### `backend/gesture_recognizer.py` - Gesture Type Detection
-- [ ] **Implement gesture event generation:**
+- [x] **Implement gesture event generation:**
   - Thumb+Index pinch detection → GestureEvent(PINCH_INDEX, ...)
   - Thumb+Middle pinch detection → GestureEvent(PINCH_MIDDLE, ...)
   - Open hand movement → GestureEvent(OPEN_HAND_MOVE, ...)
   - Fist/out-of-frame → GestureEvent(CLUTCH, ...)
 
 ### `backend/controller.py` - Cursor Movement
-- [ ] **`OSController._handle_hand_movement(event)`**
+- [x] **`OSController._handle_hand_movement(event)`**
   - Calculate delta from previous hand position
   - Apply CURSOR_SENSITIVITY scaling
   - Apply exponential smoothing (CURSOR_SMOOTHING_FACTOR)
   - Call move_cursor_relative(dx, dy)
   - Update tracking state
 
-- [ ] **`OSController.move_cursor_relative(dx, dy)`**
+- [x] **`OSController.move_cursor_relative(dx, dy)`**
   - Get current cursor position
   - Add offset to current position
   - Call move_cursor() with new coordinates
 
-- [ ] **`OSController.move_cursor(x, y)`**
+- [x] **`OSController.move_cursor(x, y)`**
   - Use pydirectinput.moveTo(x, y)
   - Update internal cursor position tracking
   - Handle coordinate bounds checking
 
-- [ ] **`OSController._get_cursor_pos()`**
+- [x] **`OSController._get_cursor_pos()`**
   - Call pydirectinput.position()
   - Return (x, y) tuple
 
 ### Integration
-- [ ] **Wire GestureRecognizer callbacks to OSController**
+- [x] **Wire GestureRecognizer callbacks to OSController**
   - Register OSController.handle_gesture as callback
   - Receive gesture events in real-time
   - Translate to OS actions

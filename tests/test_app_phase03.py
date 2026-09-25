@@ -26,10 +26,8 @@ class FakeTrack:
 async def test_annotated_track_processes_and_returns_frame(monkeypatch):
     processed = []
     recognized = []
-    drawn = []
     monkeypatch.setattr(app.video_processor, "process_frame", lambda frame: processed.append(frame) or [])
     monkeypatch.setattr(app.gesture_recognizer, "process_hands", lambda hands, timestamp: recognized.append((hands, timestamp)))
-    monkeypatch.setattr(app.video_processor, "draw_landmarks", lambda frame, hands: drawn.append((frame, hands)) or frame)
 
     output = await AnnotatedVideoTrack(
         FakeTrack(), app.video_processor, app.gesture_recognizer
@@ -39,7 +37,6 @@ async def test_annotated_track_processes_and_returns_frame(monkeypatch):
     assert output.height == 2
     assert processed[0].shape == (2, 3, 3)
     assert recognized == [([], 123)]
-    assert len(drawn) == 1
 
 
 def test_index_route_and_status_route():

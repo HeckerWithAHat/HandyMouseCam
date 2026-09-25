@@ -20,6 +20,7 @@ from config import (
     HAND_TRACKING_CONFIDENCE,
     MAX_NUM_HANDS,
     PINCH_DISTANCE_THRESHOLD_MM,
+    RETURN_ANNOTATED_VIDEO,
 )
 
 logger = logging.getLogger(__name__)
@@ -290,7 +291,11 @@ class AnnotatedVideoTrack(MediaStreamTrack):
             timestamp = time.monotonic()
         gesture_events = self.recognizer.process_hands(hands, timestamp)
         self.processor._last_gesture_events = gesture_events or []
-        annotated = self.processor.draw_landmarks(image, hands)
+        annotated = (
+            self.processor.draw_landmarks(image, hands)
+            if RETURN_ANNOTATED_VIDEO
+            else image
+        )
         self.frame_count += 1
         if self.frame_count == 1 or self.frame_count % 30 == 0:
             logger.info(

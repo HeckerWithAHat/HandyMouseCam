@@ -93,7 +93,7 @@ def test_low_confidence_and_unknown_hands_are_ignored():
     assert {event.hand for event in events} == {"Left", "Right"}
 
 
-def test_callbacks_receive_events_and_callback_errors_are_isolated(capsys):
+def test_callbacks_receive_events_and_callback_errors_are_isolated():
     recognizer = GestureRecognizer()
     received = []
     recognizer.register_gesture_callback(received.append)
@@ -104,4 +104,3 @@ def test_callbacks_receive_events_and_callback_errors_are_isolated(capsys):
     events = recognizer.process_hands([make_hand()], 1.0)
 
     assert received == events
-    assert "[gesture] Right open_hand_move move" in capsys.readouterr().out
